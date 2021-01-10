@@ -14,6 +14,7 @@
 #include "sliding_queue.h"
 #include "timer.h"
 
+#define V_MAX (-1)
 
 /*
 GAP Benchmark Suite
@@ -75,7 +76,7 @@ int64_t TDStep(const Graph &g, pvector<NodeID> &parent,
       NodeID u = *q_iter;
       for (NodeID v : g.out_neigh(u)) {
         NodeID curr_val = parent[v];
-        if (curr_val < 0) {
+        if (curr_val == V_MAX) {
           if (compare_and_swap(parent[v], curr_val, u)) {
             lqueue.push_back(v);
             scout_count += -curr_val;
@@ -115,7 +116,7 @@ pvector<NodeID> InitParent(const Graph &g) {
   pvector<NodeID> parent(g.num_nodes());
   #pragma omp parallel for
   for (NodeID n=0; n < g.num_nodes(); n++)
-    parent[n] = g.out_degree(n) != 0 ? -g.out_degree(n) : -1;
+    parent[n] = V_MAX;
   return parent;
 }
 
@@ -165,10 +166,12 @@ pvector<NodeID> DOBFS(const Graph &g, NodeID source, int alpha = 15,
       PrintStep("td", t.Seconds(), queue.size());
     }
   }
+  /*
   #pragma omp parallel for
   for (NodeID n = 0; n < g.num_nodes(); n++)
     if (parent[n] < -1)
       parent[n] = -1;
+  */
   return parent;
 }
 
@@ -209,7 +212,7 @@ bool BFSVerifier(const Graph &g, NodeID source,
     }
   }
   for (NodeID u : g.vertices()) {
-    if ((depth[u] != -1) && (parent[u] != -1)) {
+    if ((depth[u] != -1) && (parent[u] != V_MAX)) {
       if (u == source) {
         if (!((parent[u] == u) && (depth[u] == 0))) {
           cout << "Source wrong" << endl;
@@ -232,7 +235,7 @@ bool BFSVerifier(const Graph &g, NodeID source,
         cout << "Couldn't find edge from " << parent[u] << " to " << u << endl;
         return false;
       }
-    } else if (depth[u] != parent[u]) {
+    } else if (!((depth[u] == -1) && (parent[u] == V_MAX))) {
       cout << "Reachability mismatch" << endl;
       return false;
     }
